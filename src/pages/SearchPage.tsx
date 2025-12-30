@@ -1,0 +1,256 @@
+import { useState, useEffect } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { Search, Grid, List, GitBranch, Clock, Activity } from 'lucide-react'
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  Button,
+  Input,
+} from '@/components/ui'
+import axios from 'axios'
+
+interface Repository {
+  id: string
+  name: string
+  url: string
+  description?: string
+  language?: string
+  lastAnalyzed?: string
+  stars?: number
+  commits?: number
+  contributors?: number
+  status?: 'completed' | 'processing' | 'failed'
+  createdAt?: string
+  updatedAt?: string
+}
+
+export default function SearchPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const initialUrl = searchParams.get('repoUrl') || ''
+
+  const [searchQuery, setSearchQuery] = useState(initialUrl)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [sortBy, setSortBy] = useState<'recent' | 'stars' | 'name'>('recent')
+  const [repositories, setRepositories] = useState<Repository[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchRepositories()
+  }, [])
+
+  const fetchRepositories = async () => {
+    try {
+      const token = localStorage.getItem('gitverse_token')
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL || ''}/api/repositories`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+      // API returns { repositories: [...] }
+      const repos = response.data.repositories || []
+      setRepositories(Array.isArray(repos) ? repos : [])
+    } catch (error) {
+      console.error('Error fetching repositories:', error)
+      setRepositories([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredRepositories = Array.isArray(repositories)
+    ? repositories.filter(
+        (repo) =>
+          repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (repo.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : []
+
+  const sortedRepositories = [...filteredRepositories].sort((a, b) => {
+    if (sortBy === 'stars') return (b.stars || 0) - (a.stars || 0)
+    if (sortBy === 'name') return a.name.localeCompare(b.name)
+    return 0 // 'recent' is already sorted
+  })
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-heading font-bold mb-2">Browse Repositories</h1>
+          <p className="text-muted-foreground">Search and manage your analyzed repositories</p>
+        </div>
+
+        {/* Search and Filters */}
+        <Card className="glass">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search repositories..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-background/50"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                >
+                  {viewMode === 'grid' ? (
+                    <List className="h-4 w-4" />
+                  ) : (
+                    <Grid className="h-4 w-4" />
+                  )}
+                </Button>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-2 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="recent">Recent</option>
+                  <option value="stars">Most Stars</option>
+                  <option value="name">Name</option>
+                </select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Results Count */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {sortedRepositories.length}{' '}
+            {sortedRepositories.length === 1 ? 'repository' : 'repositories'} found
+          </p>
+        </div>
+
+        {/* Repository Grid/List */}
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">Loading repositories...</div>
+        ) : sortedRepositories.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No repositories found. Try adjusting your search query.
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {sortedRepositories.map((repo, index) => (
+              <Card
+                key={repo.id}
+                className="glass glass-hover cursor-pointer"
+                onClick={() => router.push(`/repo/${repo.id}`)}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <GitBranch className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-heading text-lg">{repo.name}</CardTitle>
+                        <CardDescription className="text-xs font-mono">{repo.url}</CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {repo.description || 'No description available'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-4 text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Activity className="h-4 w-4" />
+                        {(repo as any)._count?.commits || 0}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <GitBranch className="h-4 w-4" />
+                        {(repo as any)._count?.branches || 0}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {new Date(
+                        (repo as any).lastAnalyzedAt || (repo as any).createdAt
+                      ).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    {(repo as any).languages?.[0]?.name ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-accent/10 text-accent">
+                        {(repo as any).languages[0].name}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-muted/50 text-muted-foreground">
+                        No language
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sortedRepositories.map((repo, index) => (
+              <Card
+                key={repo.id}
+                className="glass glass-hover cursor-pointer"
+                onClick={() => router.push(`/repo/${repo.id}`)}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <GitBranch className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-heading font-semibold">{repo.name}</h3>
+                        {(repo as any).languages?.[0]?.name && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-accent/10 text-accent">
+                            {(repo as any).languages[0].name}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {repo.description || 'No description available'}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Activity className="h-4 w-4" />
+                          {(repo as any)._count?.commits || 0} commits
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <GitBranch className="h-4 w-4" />
+                          {(repo as any)._count?.branches || 0} branches
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {new Date(
+                            (repo as any).lastAnalyzedAt || (repo as any).createdAt
+                          ).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  )
+}

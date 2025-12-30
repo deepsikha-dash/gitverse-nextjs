@@ -1,0 +1,333 @@
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { RepositoryOverview } from '@/components/repository/RepositoryOverview'
+import { FileStructure } from '@/components/repository/FileStructure'
+import { CommitHistory } from '@/components/repository/CommitHistory'
+import { Contributors } from '@/components/repository/Contributors'
+import { BranchVisualization } from '@/components/repository/BranchVisualization'
+import { RepositoryInsights } from '@/components/repository/RepositoryInsights'
+import { AIRepositoryOverlay } from '@/components/ai/AIRepositoryOverlay'
+import {
+  Home,
+  FolderTree,
+  GitCommit,
+  Users,
+  BarChart3,
+  GitBranch,
+  ArrowLeft,
+  Trash2,
+} from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import axios from 'axios'
+import { useToast } from '@/hooks/use-toast'
+
+type TabType = 'overview' | 'files' | 'commits' | 'contributors' | 'branches' | 'insights'
+
+interface Tab {
+  id: TabType
+  label: string
+  icon: React.ReactNode
+}
+
+const tabs: Tab[] = [
+  { id: 'overview', label: 'Overview', icon: <Home className="h-4 w-4" /> },
+  { id: 'files', label: 'Files', icon: <FolderTree className="h-4 w-4" /> },
+  { id: 'commits', label: 'Commits', icon: <GitCommit className="h-4 w-4" /> },
+  { id: 'contributors', label: 'Contributors', icon: <Users className="h-4 w-4" /> },
+  { id: 'branches', label: 'Branches', icon: <GitBranch className="h-4 w-4" /> },
+  { id: 'insights', label: 'Insights', icon: <BarChart3 className="h-4 w-4" /> },
+]
+
+export default function RepositoryAnalysis() {
+  const { id } = useParams()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const [repository, setRepository] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    fetchRepository()
+  }, [id])
+
+  useEffect(() => {
+    // Poll repository status if it's analyzing
+    if (repository && (repository.status === 'pending' || repository.status === 'analyzing')) {
+      setIsAnalyzing(true)
+      const pollInterval = setInterval(() => {
+        fetchRepository()
+      }, 3000) // Poll every 3 seconds
+
+      return () => clearInterval(pollInterval)
+    } else {
+      setIsAnalyzing(false)
+    }
+  }, [repository?.status])
+
+  const fetchRepository = async () => {
+    if (!id) return
+
+    try {
+      const token = localStorage.getItem('gitverse_token')
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL || ''}/api/repositories/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+      setRepository(response.data.repository || response.data)
+      console.log('Repository data:', response.data)
+    } catch (error) {
+      console.error('Error fetching repository:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteRepository = async () => {
+    if (!id) return
+    setIsDeleting(true)
+
+    try {
+      const token = localStorage.getItem('gitverse_token')
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/repositories/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      toast({
+        title: 'Repository deleted',
+        description: 'The repository has been successfully deleted.',
+      })
+
+      router.push('/dashboard')
+    } catch (error: any) {
+      console.error('Error deleting repository:', error)
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to delete repository',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
+    }
+  }
+
+  // Repository data for AI context
+  const repositoryData = repository
+    ? {
+        name: repository.name,
+        description: repository.description || '',
+        languages: repository.languages || [],
+        stats: {
+          commits: Array.isArray(repository.commits)
+            ? repository.commits.length
+            : repository.commits || 0,
+          contributors: Array.isArray(repository.contributors) ? repository.contributors.length : 0,
+          files: Array.isArray(repository.files) ? repository.files.length : repository.files || 0,
+          branches: Array.isArray(repository.branches)
+            ? repository.branches.length
+            : repository.branches || 0,
+          lines: Array.isArray(repository.languages)
+            ? repository.languages.reduce((sum: number, lang: any) => sum + (lang.lines || 0), 0)
+            : 0,
+          stars: repository.stars || 0,
+          forks: repository.forks || 0,
+        },
+        recentCommits: Array.isArray(repository.commits) ? repository.commits.slice(0, 10) : [],
+        contributors: Array.isArray(repository.contributors) ? repository.contributors : [],
+        branches: Array.isArray(repository.branches) ? repository.branches : [],
+      }
+    : null
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <RepositoryOverview repositoryData={repository} />
+      case 'files':
+        return <FileStructure repository={repository} />
+      case 'commits':
+        return <CommitHistory repository={repository} />
+      case 'contributors':
+        return <Contributors repository={repository} />
+      case 'branches':
+        return <BranchVisualization repository={repository} />
+      case 'insights':
+        return <RepositoryInsights repository={repository} />
+      default:
+        return <RepositoryOverview />
+    }
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading repository...</p>
+          </div>
+        ) : !repository ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Repository not found</p>
+          </div>
+        ) : (
+          <>
+            {/* Header with back button */}
+            <div className="flex items-center gap-4">
+              <Link
+                href="/dashboard"
+                className="glass p-2 rounded-lg hover:bg-white/10 transition-all duration-300"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Link>
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold">{repository.name}</h1>
+                <p className="text-sm text-muted-foreground mt-1">{repository.url}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <p className="text-xs text-muted-foreground">
+                    Status: <span className="capitalize">{repository.status}</span>
+                  </p>
+                  {isAnalyzing && (
+                    <span className="flex items-center gap-1 text-xs text-primary">
+                      <span className="animate-pulse">●</span>
+                      Analyzing...
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Delete button */}
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                className="glass p-2 rounded-lg hover:bg-red-500/20 transition-all duration-300 text-red-500 hover:text-red-400"
+                title="Delete repository"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            </div>
+
+            {isAnalyzing ? (
+              <div className="glass rounded-lg p-12 text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold mb-2">Analyzing Repository</h2>
+                  <p className="text-muted-foreground">
+                    We're analyzing the repository structure, commits, contributors, and more.
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    This may take a few moments depending on the repository size...
+                  </p>
+                </div>
+                <div className="flex justify-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <GitBranch className="h-4 w-4" />
+                    Analyzing branches
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <GitCommit className="h-4 w-4" />
+                    Processing commits
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Finding contributors
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Tab navigation */}
+                <div className="glass rounded-lg p-2">
+                  <div className="flex gap-2 overflow-x-auto">
+                    {tabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`
+                          flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 whitespace-nowrap
+                          ${
+                            activeTab === tab.id
+                              ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+                              : 'hover:bg-white/10 text-muted-foreground hover:text-foreground'
+                          }
+                        `}
+                      >
+                        {tab.icon}
+                        <span>{tab.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="animate-fade-in-up">{renderContent()}</div>
+
+                {/* AI Repository Assistant Overlay */}
+                {repositoryData && <AIRepositoryOverlay repository={repositoryData} />}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteDialog && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => !isDeleting && setShowDeleteDialog(false)}
+          >
+            <div
+              className="glass max-w-md w-full p-6 rounded-lg animate-fade-in-up"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-4 mb-4">
+                <div className="p-3 rounded-lg bg-red-500/10">
+                  <Trash2 className="h-6 w-6 text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-2">Delete Repository</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to delete <strong>{repository?.name}</strong>? This action
+                    cannot be undone and will permanently remove all repository data, including
+                    commits, contributors, and analysis results.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteDialog(false)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-all duration-300 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteRepository}
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 transition-all duration-300 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Delete Repository
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  )
+}

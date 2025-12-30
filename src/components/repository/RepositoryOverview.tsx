@@ -1,0 +1,300 @@
+import {
+  GitBranch,
+  Star,
+  GitFork,
+  Eye,
+  Clock,
+  Users,
+  Code,
+  FileText,
+  Activity,
+  TrendingUp,
+  ExternalLink,
+  Download,
+  Share2,
+} from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '@/components/ui'
+
+interface RepositoryData {
+  id: string
+  name: string
+  fullName: string
+  url: string
+  description: string
+  stars: number
+  forks: number
+  watchers: number
+  language: string
+  createdAt: string
+  updatedAt: string
+  size: number
+  defaultBranch: string
+  openIssues: number
+  license?: string
+}
+
+interface RepositoryOverviewProps {
+  repositoryData?: any
+}
+
+export const RepositoryOverview = ({ repositoryData }: RepositoryOverviewProps) => {
+  // Calculate total lines of code from languages only
+  const totalLines =
+    repositoryData?.languages?.reduce((sum: number, lang: any) => sum + (lang.lines || 0), 0) || 0
+
+  // Use real repository data
+  const repository: RepositoryData = {
+    id: repositoryData?.id?.toString() || '0',
+    name: repositoryData?.name || 'Unknown',
+    fullName: repositoryData?.fullName || repositoryData?.name || 'Unknown',
+    url: repositoryData?.url || '#',
+    description: repositoryData?.description || 'No description available',
+    stars: repositoryData?.stars || 0,
+    forks: repositoryData?.forks || 0,
+    watchers: repositoryData?.watchers || 0,
+    language: repositoryData?.languages?.[0]?.name || repositoryData?.primaryLanguage || 'Unknown',
+    createdAt: repositoryData?.createdAt || new Date().toISOString(),
+    updatedAt: repositoryData?.analyzedAt
+      ? new Date(repositoryData.analyzedAt).toLocaleString()
+      : 'Unknown',
+    size: repositoryData?.size || 0,
+    defaultBranch: repositoryData?.defaultBranch || 'main',
+    openIssues: repositoryData?.openIssues || 0,
+    license: repositoryData?.license || undefined,
+  }
+
+  const stats = [
+    {
+      label: 'Total Commits',
+      value: repositoryData?.commits?.length?.toString() || '0',
+      icon: Activity,
+      trend: `${repositoryData?.branches?.length || 0} branches`,
+    },
+    {
+      label: 'Contributors',
+      value: repositoryData?.contributors?.length?.toString() || '0',
+      icon: Users,
+      trend: `${repositoryData?.contributors?.filter((c: any) => c.commits > 0)?.length || 0} active`,
+    },
+    {
+      label: 'Lines of Code',
+      value:
+        totalLines > 1000000
+          ? `${(totalLines / 1000000).toFixed(1)}M`
+          : totalLines > 1000
+            ? `${(totalLines / 1000).toFixed(1)}K`
+            : totalLines.toString(),
+      icon: Code,
+      trend: `${repositoryData?.languages?.length || 0} languages`,
+    },
+    {
+      label: 'Files',
+      value: repositoryData?.files?.length?.toString() || '0',
+      icon: FileText,
+      trend: `${(repositoryData?.size || 0) / 1024 < 1 ? '<1' : ((repositoryData?.size || 0) / 1024).toFixed(0)} KB`,
+    },
+  ]
+
+  const getLanguageColor = (name: string) => {
+    const colors: Record<string, string> = {
+      TypeScript: 'bg-blue-500',
+      JavaScript: 'bg-yellow-500',
+      Python: 'bg-green-500',
+      Java: 'bg-red-500',
+      CSS: 'bg-purple-500',
+      HTML: 'bg-orange-500',
+      Go: 'bg-cyan-500',
+      Rust: 'bg-orange-600',
+      Ruby: 'bg-red-600',
+    }
+    return colors[name] || 'bg-gray-500'
+  }
+
+  const languages = (repositoryData?.languages || []).map((lang: any) => ({
+    name: lang.name,
+    percentage: lang.percentage,
+    color: getLanguageColor(lang.name),
+  }))
+
+  const formatTimeAgo = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+    if (diffInHours < 1) return 'Just now'
+    if (diffInHours < 24) return `${diffInHours}h ago`
+    if (diffInHours < 48) return 'Yesterday'
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `${diffInDays}d ago`
+    return date.toLocaleDateString()
+  }
+
+  const recentActivity = (repositoryData?.commits || []).slice(0, 4).map((commit: any) => ({
+    type: 'commit',
+    user: commit.authorName || 'Unknown',
+    message: commit.message || 'No message',
+    time: formatTimeAgo(commit.committedAt || commit.createdAt),
+  }))
+
+  return (
+    <div className="space-y-6">
+      {/* Repository Header */}
+      <div className="glass rounded-lg p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <GitBranch className="h-6 w-6 text-primary" />
+              <h1 className="text-3xl font-heading font-bold">{repository.name}</h1>
+              <span className="px-2 py-1 rounded-full text-xs bg-accent/10 text-accent">
+                {repository.language}
+              </span>
+            </div>
+            <p className="text-muted-foreground mb-3">{repository.description}</p>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <a
+                href={repository.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-primary transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {repository.fullName}
+              </a>
+              {repository.license && (
+                <span className="flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  {repository.license}
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                Updated {repository.updatedAt}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5 text-yellow-500" />
+            <div>
+              <div className="text-xl font-bold">{repository.stars}</div>
+              <div className="text-xs text-muted-foreground">Stars</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <GitFork className="h-5 w-5 text-primary" />
+            <div>
+              <div className="text-xl font-bold">{repository.forks}</div>
+              <div className="text-xs text-muted-foreground">Forks</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-accent" />
+            <div>
+              <div className="text-xl font-bold">{repository.watchers}</div>
+              <div className="text-xs text-muted-foreground">Watchers</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-destructive" />
+            <div>
+              <div className="text-xl font-bold">{repository.openIssues}</div>
+              <div className="text-xs text-muted-foreground">Issues</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Repository Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, index) => (
+          <Card
+            key={stat.label}
+            className="glass glass-hover"
+            style={{ animationDelay: `${index * 0.1}s` }}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                  <p className="text-3xl font-heading font-bold">{stat.value}</p>
+                  <p className="text-xs text-accent mt-1 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
+                    {stat.trend}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-primary/10">
+                  <stat.icon className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Language Breakdown */}
+        <Card className="lg:col-span-2 glass">
+          <CardHeader>
+            <CardTitle className="font-heading">Language Breakdown</CardTitle>
+            <CardDescription>Code distribution by programming language</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {languages.map((lang: any) => (
+              <div key={lang.name}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{lang.name}</span>
+                  <span className="text-sm text-muted-foreground">{lang.percentage}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className={`${lang.color} h-2 rounded-full transition-all`}
+                    style={{ width: `${lang.percentage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card className="glass">
+          <CardHeader>
+            <CardTitle className="font-heading">Recent Activity</CardTitle>
+            <CardDescription>Latest updates</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivity.map((activity: any, index: number) => (
+                <div key={index} className="flex items-start gap-3">
+                  <div className="mt-1 p-1.5 rounded-full bg-accent/10">
+                    <Activity className="h-3 w-3 text-accent" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className="font-medium">{activity.user}</span>{' '}
+                      <span className="text-muted-foreground">{activity.message}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
