@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { RepositoryOverview } from '@/components/repository/RepositoryOverview'
-import { FileStructure } from '@/components/repository/FileStructure'
-import { CommitHistory } from '@/components/repository/CommitHistory'
-import { Contributors } from '@/components/repository/Contributors'
-import { BranchVisualization } from '@/components/repository/BranchVisualization'
-import { RepositoryInsights } from '@/components/repository/RepositoryInsights'
-import { AIRepositoryOverlay } from '@/components/ai/AIRepositoryOverlay'
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { RepositoryOverview } from "@/components/repository/RepositoryOverview";
+import { FileStructure } from "@/components/repository/FileStructure";
+import { CommitHistory } from "@/components/repository/CommitHistory";
+import { Contributors } from "@/components/repository/Contributors";
+import { BranchVisualization } from "@/components/repository/BranchVisualization";
+import { RepositoryInsights } from "@/components/repository/RepositoryInsights";
+import { AIRepositoryOverlay } from "@/components/ai/AIRepositoryOverlay";
 import {
   Home,
   FolderTree,
@@ -21,153 +21,189 @@ import {
   GitBranch,
   ArrowLeft,
   Trash2,
-} from 'lucide-react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import axios from 'axios'
-import { useToast } from '@/hooks/use-toast'
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 
-type TabType = 'overview' | 'files' | 'commits' | 'contributors' | 'branches' | 'insights'
+type TabType =
+  | "overview"
+  | "files"
+  | "commits"
+  | "contributors"
+  | "branches"
+  | "insights";
 
 interface Tab {
-  id: TabType
-  label: string
-  icon: React.ReactNode
+  id: TabType;
+  label: string;
+  icon: React.ReactNode;
 }
 
 const tabs: Tab[] = [
-  { id: 'overview', label: 'Overview', icon: <Home className="h-4 w-4" /> },
-  { id: 'files', label: 'Files', icon: <FolderTree className="h-4 w-4" /> },
-  { id: 'commits', label: 'Commits', icon: <GitCommit className="h-4 w-4" /> },
-  { id: 'contributors', label: 'Contributors', icon: <Users className="h-4 w-4" /> },
-  { id: 'branches', label: 'Branches', icon: <GitBranch className="h-4 w-4" /> },
-  { id: 'insights', label: 'Insights', icon: <BarChart3 className="h-4 w-4" /> },
-]
+  { id: "overview", label: "Overview", icon: <Home className="h-4 w-4" /> },
+  { id: "files", label: "Files", icon: <FolderTree className="h-4 w-4" /> },
+  { id: "commits", label: "Commits", icon: <GitCommit className="h-4 w-4" /> },
+  {
+    id: "contributors",
+    label: "Contributors",
+    icon: <Users className="h-4 w-4" />,
+  },
+  {
+    id: "branches",
+    label: "Branches",
+    icon: <GitBranch className="h-4 w-4" />,
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    icon: <BarChart3 className="h-4 w-4" />,
+  },
+];
 
 export default function RepositoryAnalysis() {
-  const params = useParams()
-  const id = params?.id as string
-  const router = useRouter()
-  const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
-  const [repository, setRepository] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const params = useParams();
+  const id = params?.id as string;
+  const router = useRouter();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [repository, setRepository] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    fetchRepository()
-  }, [id])
+    fetchRepository();
+  }, [id]);
 
   useEffect(() => {
     // Poll repository status if it's analyzing
-    if (repository && (repository.status === 'pending' || repository.status === 'analyzing')) {
-      setIsAnalyzing(true)
+    if (
+      repository &&
+      (repository.status === "pending" || repository.status === "analyzing")
+    ) {
+      setIsAnalyzing(true);
       const pollInterval = setInterval(() => {
-        fetchRepository()
-      }, 3000) // Poll every 3 seconds
+        fetchRepository();
+      }, 3000); // Poll every 3 seconds
 
-      return () => clearInterval(pollInterval)
+      return () => clearInterval(pollInterval);
     } else {
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
     }
-  }, [repository?.status])
+  }, [repository?.status]);
 
   const fetchRepository = async () => {
-    if (!id) return
+    if (!id) return;
 
     try {
-      const token = localStorage.getItem('gitverse_token')
+      const token = localStorage.getItem("gitverse_token");
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL || ''}/api/repositories/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/repositories/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
-      )
-      setRepository(response.data.repository || response.data)
-      console.log('Repository data:', response.data)
+      );
+      setRepository(response.data.repository || response.data);
+      console.log("Repository data:", response.data);
     } catch (error) {
-      console.error('Error fetching repository:', error)
+      console.error("Error fetching repository:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDeleteRepository = async () => {
-    if (!id) return
-    setIsDeleting(true)
+    if (!id) return;
+    setIsDeleting(true);
 
     try {
-      const token = localStorage.getItem('gitverse_token')
-      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/repositories/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const token = localStorage.getItem("gitverse_token");
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL || ""}/api/repositories/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       toast({
-        title: 'Repository deleted',
-        description: 'The repository has been successfully deleted.',
-      })
+        title: "Repository deleted",
+        description: "The repository has been successfully deleted.",
+      });
 
-      router.push('/dashboard')
+      router.push("/dashboard");
     } catch (error: any) {
-      console.error('Error deleting repository:', error)
+      console.error("Error deleting repository:", error);
       toast({
-        title: 'Error',
-        description: error.response?.data?.error || 'Failed to delete repository',
-        variant: 'destructive',
-      })
+        title: "Error",
+        description:
+          error.response?.data?.error || "Failed to delete repository",
+        variant: "destructive",
+      });
     } finally {
-      setIsDeleting(false)
-      setShowDeleteDialog(false)
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
-  }
+  };
 
   // Repository data for AI context
   const repositoryData = repository
     ? {
         name: repository.name,
-        description: repository.description || '',
+        description: repository.description || "",
         languages: repository.languages || [],
         stats: {
           commits: Array.isArray(repository.commits)
             ? repository.commits.length
             : repository.commits || 0,
-          contributors: Array.isArray(repository.contributors) ? repository.contributors.length : 0,
-          files: Array.isArray(repository.files) ? repository.files.length : repository.files || 0,
+          contributors: Array.isArray(repository.contributors)
+            ? repository.contributors.length
+            : 0,
+          files: Array.isArray(repository.files)
+            ? repository.files.length
+            : repository.files || 0,
           branches: Array.isArray(repository.branches)
             ? repository.branches.length
             : repository.branches || 0,
           lines: Array.isArray(repository.languages)
-            ? repository.languages.reduce((sum: number, lang: any) => sum + (lang.lines || 0), 0)
+            ? repository.languages.reduce(
+                (sum: number, lang: any) => sum + (lang.lines || 0),
+                0
+              )
             : 0,
           stars: repository.stars || 0,
           forks: repository.forks || 0,
         },
-        recentCommits: Array.isArray(repository.commits) ? repository.commits.slice(0, 10) : [],
-        contributors: Array.isArray(repository.contributors) ? repository.contributors : [],
+        recentCommits: Array.isArray(repository.commits)
+          ? repository.commits.slice(0, 10)
+          : [],
+        contributors: Array.isArray(repository.contributors)
+          ? repository.contributors
+          : [],
         branches: Array.isArray(repository.branches) ? repository.branches : [],
       }
-    : null
+    : null;
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return <RepositoryOverview repositoryData={repository} />
-      case 'files':
-        return <FileStructure repository={repository} />
-      case 'commits':
-        return <CommitHistory repository={repository} />
-      case 'contributors':
-        return <Contributors repository={repository} />
-      case 'branches':
-        return <BranchVisualization repository={repository} />
-      case 'insights':
-        return <RepositoryInsights repository={repository} />
+      case "overview":
+        return <RepositoryOverview repositoryData={repository} />;
+      case "files":
+        return <FileStructure repository={repository} />;
+      case "commits":
+        return <CommitHistory repository={repository} />;
+      case "contributors":
+        return <Contributors repository={repository} />;
+      case "branches":
+        return <BranchVisualization repository={repository} />;
+      case "insights":
+        return <RepositoryInsights repository={repository} />;
       default:
-        return <RepositoryOverview />
+        return <RepositoryOverview />;
     }
-  }
+  };
 
   return (
     <DashboardLayout>
@@ -183,19 +219,24 @@ export default function RepositoryAnalysis() {
         ) : (
           <>
             {/* Header with back button */}
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <Link
                 href="/dashboard"
-                className="glass p-2 rounded-lg hover:bg-white/10 transition-all duration-300"
+                className="glass p-2 rounded-lg hover:bg-white/10 transition-all duration-300 self-start"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Link>
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold">{repository.name}</h1>
-                <p className="text-sm text-muted-foreground mt-1">{repository.url}</p>
-                <div className="flex items-center gap-2 mt-2">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold truncate">
+                  {repository.name}
+                </h1>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
+                  {repository.url}
+                </p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <p className="text-xs text-muted-foreground">
-                    Status: <span className="capitalize">{repository.status}</span>
+                    Status:{" "}
+                    <span className="capitalize">{repository.status}</span>
                   </p>
                   {isAnalyzing && (
                     <span className="flex items-center gap-1 text-xs text-primary">
@@ -208,10 +249,10 @@ export default function RepositoryAnalysis() {
               {/* Delete button */}
               <button
                 onClick={() => setShowDeleteDialog(true)}
-                className="glass p-2 rounded-lg hover:bg-red-500/20 transition-all duration-300 text-red-500 hover:text-red-400"
+                className="glass p-2 rounded-lg hover:bg-red-500/20 transition-all duration-300 text-red-500 hover:text-red-400 flex-shrink-0"
                 title="Delete repository"
               >
-                <Trash2 className="h-5 w-5" />
+                <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
 
@@ -221,12 +262,16 @@ export default function RepositoryAnalysis() {
                   <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold mb-2">Analyzing Repository</h2>
+                  <h2 className="text-xl font-semibold mb-2">
+                    Analyzing Repository
+                  </h2>
                   <p className="text-muted-foreground">
-                    We're analyzing the repository structure, commits, contributors, and more.
+                    We're analyzing the repository structure, commits,
+                    contributors, and more.
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    This may take a few moments depending on the repository size...
+                    This may take a few moments depending on the repository
+                    size...
                   </p>
                 </div>
                 <div className="flex justify-center gap-4 text-sm text-muted-foreground">
@@ -257,8 +302,8 @@ export default function RepositoryAnalysis() {
                           flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 whitespace-nowrap
                           ${
                             activeTab === tab.id
-                              ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
-                              : 'hover:bg-white/10 text-muted-foreground hover:text-foreground'
+                              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                              : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
                           }
                         `}
                       >
@@ -273,7 +318,9 @@ export default function RepositoryAnalysis() {
                 <div className="animate-fade-in-up">{renderContent()}</div>
 
                 {/* AI Repository Assistant Overlay */}
-                {repositoryData && <AIRepositoryOverlay repository={repositoryData} />}
+                {repositoryData && (
+                  <AIRepositoryOverlay repository={repositoryData} />
+                )}
               </>
             )}
           </>
@@ -286,45 +333,50 @@ export default function RepositoryAnalysis() {
             onClick={() => !isDeleting && setShowDeleteDialog(false)}
           >
             <div
-              className="glass max-w-md w-full p-6 rounded-lg animate-fade-in-up"
+              className="glass max-w-md w-full p-4 sm:p-6 rounded-lg animate-fade-in-up"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-3 rounded-lg bg-red-500/10">
-                  <Trash2 className="h-6 w-6 text-red-500" />
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-4">
+                <div className="p-2 sm:p-3 rounded-lg bg-red-500/10 flex-shrink-0">
+                  <Trash2 className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2">Delete Repository</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Are you sure you want to delete <strong>{repository?.name}</strong>? This action
-                    cannot be undone and will permanently remove all repository data, including
-                    commits, contributors, and analysis results.
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold mb-2">
+                    Delete Repository
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Are you sure you want to delete{" "}
+                    <strong className="break-words">{repository?.name}</strong>?
+                    This action cannot be undone and will permanently remove all
+                    repository data, including commits, contributors, and
+                    analysis results.
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 justify-end">
                 <button
                   onClick={() => setShowDeleteDialog(false)}
                   disabled={isDeleting}
-                  className="px-4 py-2 rounded-lg glass hover:bg-white/10 transition-all duration-300 disabled:opacity-50"
+                  className="px-3 sm:px-4 py-2 rounded-lg glass hover:bg-white/10 transition-all duration-300 disabled:opacity-50 text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteRepository}
                   disabled={isDeleting}
-                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 transition-all duration-300 flex items-center gap-2 disabled:opacity-50"
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
                 >
                   {isDeleting ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Deleting...
+                      <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white"></div>
+                      <span className="hidden sm:inline">Deleting...</span>
+                      <span className="sm:hidden">Deleting...</span>
                     </>
                   ) : (
                     <>
-                      <Trash2 className="h-4 w-4" />
-                      Delete Repository
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span>Delete Repository</span>
                     </>
                   )}
                 </button>
@@ -334,5 +386,5 @@ export default function RepositoryAnalysis() {
         )}
       </div>
     </DashboardLayout>
-  )
+  );
 }

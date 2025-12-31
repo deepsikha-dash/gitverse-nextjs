@@ -1,11 +1,9 @@
 import {
-  GitCommit,
   User,
   Calendar,
   FileText,
   Plus,
   Minus,
-  ExternalLink,
   GitBranch,
 } from 'lucide-react'
 import { Card } from '@/components/ui'
@@ -190,14 +188,6 @@ export const CommitHistory = ({ repository }: CommitHistoryProps) => {
                             <span className="font-medium">{commit.branch}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <GitCommit className="h-4 w-4 text-primary" />
-                            <span className="text-muted-foreground">Hash:</span>
-                            <code className="font-mono text-xs glass px-2 py-1 rounded">
-                              {commit.hash}
-                            </code>
-                            <button className="text-primary hover:text-primary/80 transition-colors">
-                              <ExternalLink className="h-4 w-4" />
-                            </button>
                           </div>
                         </div>
 

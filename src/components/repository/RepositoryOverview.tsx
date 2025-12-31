@@ -10,10 +10,8 @@ import {
   Activity,
   TrendingUp,
   ExternalLink,
-  Download,
-  Share2,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button } from '@/components/ui'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui'
 
 interface RepositoryData {
   id: string
@@ -171,16 +169,6 @@ export const RepositoryOverview = ({ repositoryData }: RepositoryOverviewProps) 
                 Updated {repository.updatedAt}
               </span>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
         </div>
 
