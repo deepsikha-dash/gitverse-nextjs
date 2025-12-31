@@ -12,7 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Card } from "@/components/ui";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface Contributor {
   id: string;
@@ -37,8 +37,21 @@ type SortOption = "commits" | "additions" | "recent";
 
 export function Contributors({ repository }: ContributorsProps) {
   const [sortBy, setSortBy] = useState<SortOption>("commits");
+
   const [selectedContributor, setSelectedContributor] =
     useState<Contributor | null>(null);
+  const [modalTop, setModalTop] = useState<number>(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // When opening modal, set its top position to current scroll
+  useEffect(() => {
+    if (selectedContributor) {
+      setModalTop(window.scrollY);
+      if (modalRef.current) {
+        modalRef.current.scrollTop = 0;
+      }
+    }
+  }, [selectedContributor]);
 
   // Use real contributors from repository or empty array
   const contributors: Contributor[] =
@@ -301,35 +314,63 @@ export function Contributors({ repository }: ContributorsProps) {
       {/* Selected contributor modal */}
       {selectedContributor && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center p-4 z-50"
           onClick={() => setSelectedContributor(null)}
         >
-          <Card
-            className="glass max-w-4xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 md:p-8 animate-fade-in-up relative"
-            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          <div
+            style={{
+              position: "absolute",
+              top: modalTop -200,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
           >
-            {/* Close button */}
-            <button
-              onClick={() => setSelectedContributor(null)}
-              className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 hover:bg-white/10 rounded-lg transition-all z-10"
+            <Card
+              ref={modalRef}
+              className="glass max-w-3xl w-full max-h-[90vh] overflow-y-auto pb-8 animate-fade-in-up"
+              style={{ pointerEvents: "auto" }}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
-              <X className="h-5 w-5" />
-            </button>
+              {/* Close button */}
+              <button
+                onClick={() => setSelectedContributor(null)}
+                className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-lg transition-all z-10"
+              >
+                <X className="h-5 w-5" />
+              </button>
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 sm:mb-8 pr-8 sm:pr-0">
-              <img
-                src={selectedContributor.avatar}
-                alt={selectedContributor.name}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-2 ring-primary/30 flex-shrink-0"
-              />
-              <div className="flex-1 text-center sm:text-left">
-                <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 mb-1 justify-center sm:justify-start">
-                  <h2 className="text-2xl sm:text-3xl font-bold break-words">
-                    {selectedContributor.name}
-                  </h2>
+              {/* Header */}
+              <div className="mb-8 p-8 pb-0">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="p-3 rounded-lg bg-primary/10">
+                    <Users className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold break-all">
+                      {selectedContributor.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-2 font-mono break-all">
+                      {selectedContributor.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Rank and Percentage Badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
+                    #{selectedContributor.rank} Contributor
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm font-medium">
+                    {typeof selectedContributor.percentage === "string"
+                      ? parseFloat(selectedContributor.percentage).toFixed(2)
+                      : selectedContributor.percentage.toFixed(2)}
+                    % of commits
+                  </span>
                   {selectedContributor.rank <= 3 && (
-                    <span className="text-xl sm:text-2xl">
+                    <span className="text-2xl">
                       {selectedContributor.rank === 1
                         ? "🥇"
                         : selectedContributor.rank === 2
@@ -338,314 +379,310 @@ export function Contributors({ repository }: ContributorsProps) {
                     </span>
                   )}
                 </div>
-                <p className="text-muted-foreground mb-3 text-sm break-words">
-                  {selectedContributor.email}
-                </p>
-                <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm justify-center sm:justify-start flex-wrap">
-                  <span className="px-3 py-1 rounded-full bg-primary/20 text-primary whitespace-nowrap">
-                    #{selectedContributor.rank} Contributor
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 whitespace-nowrap">
-                    {typeof selectedContributor.percentage === "string"
-                      ? parseFloat(selectedContributor.percentage).toFixed(2)
-                      : selectedContributor.percentage.toFixed(2)}
-                    % of commits
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Main stats grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-              <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                <div className="flex items-center gap-2 mb-2 text-blue-400">
-                  <GitCommit className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs font-semibold uppercase">
-                    Commits
-                  </span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-bold break-words">
-                  {selectedContributor.commits.toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Avg{" "}
-                  {(selectedContributor.commits / contributors.length).toFixed(
-                    1
-                  )}{" "}
-                  per contributor
-                </p>
               </div>
 
-              <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                <div className="flex items-center gap-2 mb-2 text-green-400">
-                  <Plus className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs font-semibold uppercase">Added</span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-bold">
-                  {(selectedContributor.additions / 1000).toFixed(1)}K
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {(
-                    (selectedContributor.additions /
-                      contributors.reduce((sum, c) => sum + c.additions, 0)) *
-                    100
-                  ).toFixed(1)}
-                  % of all additions
-                </p>
-              </div>
-
-              <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                <div className="flex items-center gap-2 mb-2 text-red-400">
-                  <Minus className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs font-semibold uppercase">
-                    Deleted
-                  </span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-bold">
-                  {(selectedContributor.deletions / 1000).toFixed(1)}K
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {(
-                    (selectedContributor.deletions /
-                      contributors.reduce((sum, c) => sum + c.deletions, 0)) *
-                    100
-                  ).toFixed(1)}
-                  % of all deletions
-                </p>
-              </div>
-
-              <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                <div className="flex items-center gap-2 mb-2 text-yellow-400">
-                  <BarChart3 className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs font-semibold uppercase">
-                    Impact
-                  </span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-bold">
-                  {(
-                    selectedContributor.additions +
-                    selectedContributor.deletions
-                  ).toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Total lines changed
-                </p>
-              </div>
-            </div>
-
-            {/* Activity details */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-6 sm:mb-8">
-              {/* Timeline info */}
-              <div className="space-y-4 sm:space-y-6">
-                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary flex-shrink-0" />
-                  Contribution Timeline
-                </h3>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      First Commit
-                    </p>
-                    <p className="text-base sm:text-lg font-semibold">
-                      {formatDate(selectedContributor.firstCommit)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {Math.floor(
-                        (new Date().getTime() -
-                          new Date(selectedContributor.firstCommit).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}{" "}
-                      days ago
-                    </p>
+              {/* Main stats grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 px-8">
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center gap-2 mb-2 text-blue-400">
+                    <GitCommit className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      Commits
+                    </span>
                   </div>
+                  <p className="text-3xl font-bold">
+                    {selectedContributor.commits.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Avg{" "}
+                    {(
+                      selectedContributor.commits / contributors.length
+                    ).toFixed(1)}{" "}
+                    per contributor
+                  </p>
+                </div>
 
-                  <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      Last Commit
-                    </p>
-                    <p className="text-base sm:text-lg font-semibold">
-                      {formatDate(selectedContributor.lastCommit)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {Math.floor(
-                        (new Date().getTime() -
-                          new Date(selectedContributor.lastCommit).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}{" "}
-                      days ago
-                    </p>
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center gap-2 mb-2 text-green-400">
+                    <Plus className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      Added
+                    </span>
                   </div>
+                  <p className="text-3xl font-bold">
+                    {(selectedContributor.additions / 1000).toFixed(1)}K
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {(
+                      (selectedContributor.additions /
+                        contributors.reduce((sum, c) => sum + c.additions, 0)) *
+                      100
+                    ).toFixed(1)}
+                    % of all additions
+                  </p>
+                </div>
 
-                  <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      Active for
-                    </p>
-                    <p className="text-base sm:text-lg font-semibold">
-                      {Math.floor(
-                        (new Date(selectedContributor.lastCommit).getTime() -
-                          new Date(selectedContributor.firstCommit).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}{" "}
-                      days
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ~
-                      {Math.floor(
-                        (new Date(selectedContributor.lastCommit).getTime() -
-                          new Date(selectedContributor.firstCommit).getTime()) /
-                          (1000 * 60 * 60 * 24 * 7)
-                      )}{" "}
-                      weeks
-                    </p>
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center gap-2 mb-2 text-red-400">
+                    <Minus className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      Deleted
+                    </span>
                   </div>
+                  <p className="text-3xl font-bold">
+                    {(selectedContributor.deletions / 1000).toFixed(1)}K
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {(
+                      (selectedContributor.deletions /
+                        contributors.reduce((sum, c) => sum + c.deletions, 0)) *
+                      100
+                    ).toFixed(1)}
+                    % of all deletions
+                  </p>
+                </div>
+
+                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div className="flex items-center gap-2 mb-2 text-yellow-400">
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      Impact
+                    </span>
+                  </div>
+                  <p className="text-3xl font-bold">
+                    {(
+                      selectedContributor.additions +
+                      selectedContributor.deletions
+                    ).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Total lines changed
+                  </p>
                 </div>
               </div>
 
-              {/* Code metrics */}
-              <div className="space-y-4 sm:space-y-6">
-                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-primary flex-shrink-0" />
-                  Code Metrics
-                </h3>
+              {/* Activity details */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-8">
+                {/* Timeline info */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                    Contribution Timeline
+                  </h3>
 
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      Commits per Week
-                    </p>
-                    <p className="text-base sm:text-lg font-semibold">
-                      {(
-                        selectedContributor.commits /
-                        Math.max(
-                          1,
-                          Math.floor(
-                            (new Date(
+                  <div className="space-y-4">
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        First Commit
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {formatDate(selectedContributor.firstCommit)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {Math.floor(
+                          (new Date().getTime() -
+                            new Date(
+                              selectedContributor.firstCommit
+                            ).getTime()) /
+                            (1000 * 60 * 60 * 24)
+                        )}{" "}
+                        days ago
+                      </p>
+                    </div>
+
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Last Commit
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {formatDate(selectedContributor.lastCommit)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {Math.floor(
+                          (new Date().getTime() -
+                            new Date(
                               selectedContributor.lastCommit
-                            ).getTime() -
-                              new Date(
-                                selectedContributor.firstCommit
-                              ).getTime()) /
-                              (1000 * 60 * 60 * 24 * 7)
+                            ).getTime()) /
+                            (1000 * 60 * 60 * 24)
+                        )}{" "}
+                        days ago
+                      </p>
+                    </div>
+
+                    <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Active for
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {Math.floor(
+                          (new Date(selectedContributor.lastCommit).getTime() -
+                            new Date(
+                              selectedContributor.firstCommit
+                            ).getTime()) /
+                            (1000 * 60 * 60 * 24)
+                        )}{" "}
+                        days
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        ~
+                        {Math.floor(
+                          (new Date(selectedContributor.lastCommit).getTime() -
+                            new Date(
+                              selectedContributor.firstCommit
+                            ).getTime()) /
+                            (1000 * 60 * 60 * 24 * 7)
+                        )}{" "}
+                        weeks
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Code metrics */}
+                <div className="space-y-4 sm:space-y-6">
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-primary flex-shrink-0" />
+                    Code Metrics
+                  </h3>
+
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Commits per Week
+                      </p>
+                      <p className="text-base sm:text-lg font-semibold">
+                        {(
+                          selectedContributor.commits /
+                          Math.max(
+                            1,
+                            Math.floor(
+                              (new Date(
+                                selectedContributor.lastCommit
+                              ).getTime() -
+                                new Date(
+                                  selectedContributor.firstCommit
+                                ).getTime()) /
+                                (1000 * 60 * 60 * 24 * 7)
+                            )
                           )
-                        )
-                      ).toFixed(1)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Average per week of activity
-                    </p>
-                  </div>
+                        ).toFixed(1)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Average per week of activity
+                      </p>
+                    </div>
 
-                  <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      Changes per Commit
-                    </p>
-                    <p className="text-base sm:text-lg font-semibold">
-                      {(
-                        (selectedContributor.additions +
-                          selectedContributor.deletions) /
-                        Math.max(1, selectedContributor.commits)
-                      ).toFixed(0)}{" "}
-                      <span className="text-xs sm:text-sm">lines</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Average changes per commit
-                    </p>
-                  </div>
+                    <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Changes per Commit
+                      </p>
+                      <p className="text-base sm:text-lg font-semibold">
+                        {(
+                          (selectedContributor.additions +
+                            selectedContributor.deletions) /
+                          Math.max(1, selectedContributor.commits)
+                        ).toFixed(0)}{" "}
+                        <span className="text-xs sm:text-sm">lines</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Average changes per commit
+                      </p>
+                    </div>
 
-                  <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                      Commit Ratio
-                    </p>
-                    <p className="text-base sm:text-lg font-semibold break-words">
-                      {(
-                        (selectedContributor.additions /
-                          Math.max(
-                            1,
-                            selectedContributor.additions +
-                              selectedContributor.deletions
-                          )) *
-                        100
-                      ).toFixed(1)}
-                      % adds,{" "}
-                      {(
-                        (selectedContributor.deletions /
-                          Math.max(
-                            1,
-                            selectedContributor.additions +
-                              selectedContributor.deletions
-                          )) *
-                        100
-                      ).toFixed(1)}
-                      % deletes
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Addition vs deletion ratio
-                    </p>
+                    <div className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                        Commit Ratio
+                      </p>
+                      <p className="text-base sm:text-lg font-semibold break-words">
+                        {(
+                          (selectedContributor.additions /
+                            Math.max(
+                              1,
+                              selectedContributor.additions +
+                                selectedContributor.deletions
+                            )) *
+                          100
+                        ).toFixed(1)}
+                        % adds,{" "}
+                        {(
+                          (selectedContributor.deletions /
+                            Math.max(
+                              1,
+                              selectedContributor.additions +
+                                selectedContributor.deletions
+                            )) *
+                          100
+                        ).toFixed(1)}
+                        % deletes
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Addition vs deletion ratio
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Comparison to others */}
-            <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-4 sm:p-6 border border-white/10">
-              <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary flex-shrink-0" />
-                Contribution Comparison
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                    vs Average
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-xl sm:text-2xl font-bold text-primary">
-                      {(
-                        selectedContributor.commits /
-                        (contributors.reduce((sum, c) => sum + c.commits, 0) /
-                          contributors.length)
-                      ).toFixed(1)}
-                      x
+              {/* Comparison to others */}
+              <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-4 sm:p-6 border border-white/10 mx-8">
+                <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary flex-shrink-0" />
+                  Contribution Comparison
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                      vs Average
                     </p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      more commits
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-xl sm:text-2xl font-bold text-primary">
+                        {(
+                          selectedContributor.commits /
+                          (contributors.reduce((sum, c) => sum + c.commits, 0) /
+                            contributors.length)
+                        ).toFixed(1)}
+                        x
+                      </p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        more commits
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                    Rank
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-xl sm:text-2xl font-bold text-primary">
-                      #{selectedContributor.rank}
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                      Rank
                     </p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      of {contributors.length}
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-xl sm:text-2xl font-bold text-primary">
+                        #{selectedContributor.rank}
+                      </p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        of {contributors.length}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                    Percentile
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-xl sm:text-2xl font-bold text-primary">
-                      {(
-                        ((contributors.length - selectedContributor.rank) /
-                          contributors.length) *
-                        100
-                      ).toFixed(0)}
-                      %
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+                      Percentile
                     </p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      top contributors
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-xl sm:text-2xl font-bold text-primary">
+                        {(
+                          ((contributors.length - selectedContributor.rank) /
+                            contributors.length) *
+                          100
+                        ).toFixed(0)}
+                        %
+                      </p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        top contributors
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
       )}
     </div>
