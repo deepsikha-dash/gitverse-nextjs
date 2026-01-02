@@ -77,6 +77,9 @@ model Commit {
   authorAvatar String?    @map("author_avatar")
   committedAt  DateTime   @map("committed_at")
   branch       String
+  parents      String[]   @default([]) // Parent commit hashes for merge/branch tracking
+  refs         String[]   @default([]) // Git ref decorations from %D (branches, remotes, HEAD -> ...)
+  tags         String[]   @default([]) // Git tags associated with this commit
   additions    Int        @default(0)
   deletions    Int        @default(0)
   filesChanged Int        @default(0) @map("files_changed")
