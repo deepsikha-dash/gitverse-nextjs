@@ -12,16 +12,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (contentType) {
-      try {
-        await request.json();
-      } catch {
-        return NextResponse.json(
-          { error: "Invalid JSON payload" },
-          { status: 400 }
-        );
-      }
-   }
+const contentLength = request.headers.get("content-length");
+
+if (
+  contentType &&
+  contentType.includes("application/json") &&
+  contentLength !== "0"
+) {
+  const rawBody = await request.text();
+
+  // Only validate JSON when body actually exists
+  if (rawBody.trim().length > 0) {
+    try {
+      JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 }
+      );
+    }
+  }
+}
     //Authentication user
     const user = await getAuthUser(request);
 
