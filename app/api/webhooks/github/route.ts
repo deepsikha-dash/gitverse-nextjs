@@ -291,7 +291,15 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
   } catch (error: any) {
-    console.error("GitHub webhook PR review error:", error);
+    const safeError = isAxiosError(error)
+      ? {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url,
+        }
+      : error;
+    console.error("GitHub webhook PR review error:", safeError);
     return NextResponse.json(
       {
         error: "Failed to process PR webhook",
