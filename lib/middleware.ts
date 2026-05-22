@@ -1,6 +1,47 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { verifyToken } from "./auth";
+
+export class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
+export function isHttpError(error: unknown): error is HttpError {
+  return error instanceof HttpError;
+}
+
+export async function requireAuth(
+  request: NextRequest
+): Promise<{ userId: number }> {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    throw new HttpError("Authentication required", 401);
+  }
+
+  const token = authHeader.slice(7);
+  const payload = verifyToken(token);
+  if (!payload) {
+    throw new HttpError("Invalid or expired token", 401);
+  }
+
+  return { userId: payload.userId };
+}
+
+export async function getAuthUser(
+  request: NextRequest
+): Promise<{ userId: number } | null> {
+  try {
+    return await requireAuth(request);
+  } catch {
+    return null;
+  }
+}
 
 export async function middleware(request: NextRequest) {
   try {
