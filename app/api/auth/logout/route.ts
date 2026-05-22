@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, unauthorizedResponse } from "@/lib/middleware";
+import { getAuthUser } from "@/lib/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +16,7 @@ export async function POST(request: NextRequest) {
     const user = await getAuthUser(request);
     if (!user) {
       return unauthorizedResponse("No active session to log out from");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // In a stateless JWT setup, logout is handled client-side by removing the token
@@ -39,4 +41,11 @@ export async function GET() {
     { error: "Method not allowed. Use POST." },
     { status: 405, headers: { Allow: "POST" } }
   );
+
+} catch (error) {
+    console.error("Logout API Error:", error);
+
+    //prevent stack trace from reaching client
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }

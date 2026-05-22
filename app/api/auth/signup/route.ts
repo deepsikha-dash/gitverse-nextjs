@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkRateLimit } from '@/src/utils/rateLimit';
+import { checkRateLimit } from '@/utils/rateLimit';
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 import { generateToken } from "@/lib/auth";
@@ -119,5 +119,6 @@ export async function POST(request: NextRequest) {
       { error: "An unexpected error occurred" },
       { status: 500 }
     );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
