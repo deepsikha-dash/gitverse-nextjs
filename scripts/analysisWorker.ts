@@ -130,13 +130,21 @@ async function runJob(
   }
 }
 
+export interface JobOutcome {
+  jobId: string;
+  status: "processed" | "failed" | "errored";
+  error?: string;
+}
+
 export interface AnalysisWorkerSummary {
   totalJobsScanned: number;
   jobsProcessed: number;
   jobsSkipped: number;
   jobsFailed: number;
+  jobsErrored: number;
   executionDurationMs: number;
   success: boolean;
+  jobOutcomes: JobOutcome[];
 }
 
 export async function startAnalysisWorkerLoop(opts?: {
@@ -160,6 +168,8 @@ export async function startAnalysisWorkerLoop(opts?: {
   let jobsProcessed = 0;
   let jobsSkipped = 0;
   let jobsFailed = 0;
+  let jobsErrored = 0;
+  const jobOutcomes: JobOutcome[] = [];
 
   const shutdown = async (signal: string) => {
     if (stopping) return;
@@ -198,34 +208,44 @@ export async function startAnalysisWorkerLoop(opts?: {
       
       if (isSuccess) {
         jobsProcessed++;
+        jobOutcomes.push({ jobId: job.id, status: "processed" });
       } else {
         jobsFailed++;
+        jobOutcomes.push({ jobId: job.id, status: "failed" });
       }
 
       if (opts?.once) break;
     } catch (e) {
-      console.error("worker loop error:", sanitizeErrorMessage(e));
+      jobsErrored++;
+      const safeMessage = sanitizeErrorMessage(e);
+      console.error("worker loop error:", safeMessage);
       if (opts?.once) {
         return {
           totalJobsScanned,
           jobsProcessed,
           jobsSkipped,
           jobsFailed,
+          jobsErrored,
           executionDurationMs: Date.now() - startTimeMs,
           success: false,
+          jobOutcomes,
         };
       }
       await sleep(pollIntervalMs);
     }
   }
 
+  const success = jobsFailed === 0 && jobsErrored === 0;
+
   return {
     totalJobsScanned,
     jobsProcessed,
     jobsSkipped,
     jobsFailed,
+    jobsErrored,
     executionDurationMs: Date.now() - startTimeMs,
-    success: true,
+    success,
+    jobOutcomes,
   };
 }
 
