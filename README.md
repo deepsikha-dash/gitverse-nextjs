@@ -300,12 +300,12 @@ Made with ❤️ by the GitVerse Team
 ### GitHub API Rate Limits
 
 #### What it looks like
-```
+```text
 Error: API rate limit exceeded for user ID XXXXXX
 Status: 403 Forbidden
 X-RateLimit-Remaining: 0
 X-RateLimit-Reset: 1716825600
-```
+```text
 
 You may also see this in the GitVerse UI:
 ```
