@@ -179,7 +179,7 @@ model Repository {
   contributors   Contributor[]
   languages      Language[]
   analysisJobs   AnalysisJob[]
-
+  @@index([url])
   @@map("repositories")
 }
 
