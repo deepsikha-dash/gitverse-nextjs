@@ -236,7 +236,7 @@ let defaultBranch = branches.find((b) => b.isDefault)?.name || "main";
 
 // Extract owner/repo from URL for GitHub API call
 const githubMatch = repository.url.match(
-  /github\.com[/:]([^/]+)\/([^/.]+?)(?:\.git)?$/i
+  /github\.com[/:]([^/]+)\/([^/.\s]+?)(?:\.git)?(?:[/?#].*)?$/i
 );
 if (githubMatch) {
   try {
